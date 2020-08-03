@@ -44,7 +44,7 @@ impl Runtime {
             event_details: Some(event_details),
         };
 
-        if let Err(error) = self.introspection_event_sender.send(event) {
+        if let Err(error) = self.introspection_event_queue.0.send(event) {
             warn!("Failed to send introspection event to channel: {:?}", error);
         }
     }

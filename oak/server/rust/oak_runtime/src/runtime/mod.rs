@@ -250,7 +250,11 @@ pub struct Runtime {
 
     /// Queue used to broadcast introspection events. The sender is used by the
     /// runtime to send events, and can be subscribed to by aux servers.
-    introspection_event_sender: broadcast::Sender<Event>,
+    /// An intial, unused receiver ensures that a history of past events is kept
+    /// in the queue up to its capacity. This is helpful for the period when
+    /// the runtime has started already, but aux servers haven't yet registered
+    /// receivers.
+    introspection_event_queue: (broadcast::Sender<Event>, broadcast::Receiver<Event>),
 
     pub metrics_data: Metrics,
 }

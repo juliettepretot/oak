@@ -62,10 +62,11 @@ impl RuntimeProxy {
         application_configuration: &ApplicationConfiguration,
         grpc_configuration: &GrpcConfiguration,
     ) -> RuntimeProxy {
-        // Max number of events that can be held in the channel while waiting
-        // to be received. Ref: https://docs.rs/tokio/0.2.21/tokio/sync/broadcast/index.html#lagging
-        const INTROSPECTION_CHANNEL_CAPACITY: usize = 100;
-        let (introspection_event_sender, _) = broadcast::channel(INTROSPECTION_CHANNEL_CAPACITY);
+        // Max number of previous events that are held in the queue.
+        // Ref: https://docs.rs/tokio/0.2.21/tokio/sync/broadcast/index.html#lagging
+        const INTROSPECTION_QUEUE_CAPACITY: usize = 100;
+        let (introspection_event_sender, introspection_event_receiver) =
+            broadcast::channel(INTROSPECTION_QUEUE_CAPACITY);
         let runtime = Arc::new(Runtime {
             application_configuration: application_configuration.clone(),
             grpc_configuration: grpc_configuration.clone(),
@@ -74,7 +75,7 @@ impl RuntimeProxy {
             node_infos: RwLock::new(HashMap::new()),
             next_node_id: AtomicU64::new(0),
             aux_servers: Mutex::new(Vec::new()),
-            introspection_event_sender,
+            introspection_event_queue: (introspection_event_sender, introspection_event_receiver),
             metrics_data: Metrics::new(),
         });
         let proxy = runtime.proxy_for_new_node();
