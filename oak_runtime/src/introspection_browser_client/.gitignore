@@ -1,0 +1,4 @@
+# Webpack output
+/dist
+# Programmatically generated code from protobufs
+/proto
