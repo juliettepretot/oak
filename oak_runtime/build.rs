@@ -41,7 +41,7 @@ fn main() {
 
     // Build assets for the browser client of the introspection server
     #[cfg(feature = "oak_debug")]
-    let output = Command::new("npm")
+    Command::new("npm")
         .args(&[
             "--prefix",
             "./src/introspection_browser_client",
