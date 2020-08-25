@@ -23,7 +23,7 @@ use hyper::{
 use log::info;
 use prost::Message;
 use regex::Regex;
-use std::{ffi::OsStr, fs::File, io::Read, net::SocketAddr, path::Path, sync::Arc};
+use std::{net::SocketAddr, sync::Arc};
 
 /// Wrap a string holding a Graphviz Dot graph description in an HTML template
 /// suitable for live display.
@@ -96,7 +96,7 @@ fn find_ids(path: &str, kind: &str) -> Option<(u64, u64)> {
 }
 
 // Looks for a matching file used by the browser client and returns it
-fn find_client_file(path: &str) -> Option<(File, String)> {
+fn find_client_file(path: &str) -> Option<(Vec<u8>, String)> {
     let filepath = Regex::new(r"^/dynamic/(?P<filepath>[^\s]+)$")
         .unwrap()
         .captures(path)?
@@ -104,26 +104,19 @@ fn find_client_file(path: &str) -> Option<(File, String)> {
         .unwrap()
         .as_str();
 
-    let path_string = format!(
-        "./oak_runtime/src/introspection_browser_client/dist/{}",
-        filepath
-    );
-    let path = Path::new(&path_string);
-    let file = File::open(path).ok()?;
-
-    const UNKNOWN_CONTENT_TYPE: &str = "application/octet-stream";
-    let content_type = match path.extension().and_then(OsStr::to_str) {
-        Some(ext) => match ext {
-            "html" => "text/html".to_string(),
-            "css" => "text/css".to_string(),
-            "js" => "application/javascript".to_string(),
-            "wasm" => "application/wasm".to_string(),
-            _ => UNKNOWN_CONTENT_TYPE.to_string(),
-        },
-        None => UNKNOWN_CONTENT_TYPE.to_string(),
-    };
-
-    Some((file, content_type))
+    // TODO(#913): Create a list of client files at compile time, instead of
+    // listen them manually.
+    match filepath {
+        "index.html" => Some((
+            include_bytes!("introspection_browser_client/dist/index.html").to_vec(),
+            "text/html".to_string(),
+        )),
+        "index.js" => Some((
+            include_bytes!("introspection_browser_client/dist/index.js").to_vec(),
+            "application/javascript".to_string(),
+        )),
+        _ => None,
+    }
 }
 
 // Handler for a single HTTP request to the introspection server.
@@ -138,7 +131,6 @@ fn handle_request(
     }
     // TODO(#672): Shift to a framework.
     let path = req.uri().path();
-    info!("path!!!! {}", path);
     if path == "/" {
         return Ok(Response::new(Body::from(html_wrap(
             "Data Structures",
@@ -174,15 +166,8 @@ fn handle_request(
         );
 
         return Ok(response);
-    } else if let Some((mut file, content_type)) = find_client_file(path) {
-        let mut data = Vec::new();
-        if file.read_to_end(&mut data).is_err() {
-            let mut server_error = Response::default();
-            *server_error.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
-            return Ok(server_error);
-        }
-
-        let mut response = Response::new(Body::from(data));
+    } else if let Some((file, content_type)) = find_client_file(path) {
+        let mut response = Response::new(Body::from(file));
         response
             .headers_mut()
             .insert(CONTENT_TYPE, content_type.parse().unwrap());
