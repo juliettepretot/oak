@@ -15,7 +15,6 @@
 //
 
 use oak_utils::{compile_protos_with_options, generate_grpc_code, CodegenOptions, ProtoOptions};
-use std::process::Command;
 
 fn main() {
     generate_grpc_code(
@@ -38,16 +37,4 @@ fn main() {
             ..Default::default()
         },
     );
-
-    // Build assets for the browser client of the introspection server
-    #[cfg(feature = "oak_debug")]
-    Command::new("npm")
-        .args(&[
-            "--prefix",
-            "./src/introspection_browser_client",
-            "run",
-            "build",
-        ])
-        .output()
-        .expect("failed to build introspection client assets");
 }
