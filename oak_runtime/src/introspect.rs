@@ -108,11 +108,19 @@ fn find_client_file(path: &str) -> Option<(Vec<u8>, String)> {
     // listen them manually.
     match filepath {
         "index.html" => Some((
-            include_bytes!("introspection_browser_client/dist/index.html").to_vec(),
+            include_bytes!(concat!(
+                env!("OUT_DIR"),
+                "/src/introspection_browser_client/dist/index.html"
+            ))
+            .to_vec(),
             "text/html".to_string(),
         )),
         "index.js" => Some((
-            include_bytes!("introspection_browser_client/dist/index.js").to_vec(),
+            include_bytes!(concat!(
+                env!("OUT_DIR"),
+                "/src/introspection_browser_client/dist/index.js"
+            ))
+            .to_vec(),
             "application/javascript".to_string(),
         )),
         _ => None,
