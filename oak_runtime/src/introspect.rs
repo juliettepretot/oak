@@ -104,11 +104,6 @@ fn find_client_file(path: &str) -> Option<(File, String)> {
         .unwrap()
         .as_str();
 
-    // Do not serve paths that go up the tree
-    if filepath.contains("../") {
-        return None;
-    }
-
     let path_string = format!(
         "./oak_runtime/src/introspection_browser_client/dist/{}",
         filepath
@@ -143,6 +138,7 @@ fn handle_request(
     }
     // TODO(#672): Shift to a framework.
     let path = req.uri().path();
+    info!("path!!!! {}", path);
     if path == "/" {
         return Ok(Response::new(Body::from(html_wrap(
             "Data Structures",
