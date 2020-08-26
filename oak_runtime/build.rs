@@ -52,8 +52,9 @@ fn main() {
         let path = format!("{}/{}", INTROPSECTION_CLIENT_DIR, client_file);
         let out_path = format!("{}/{}", out_dir, path);
         let mut out_file = fs::OpenOptions::new()
-            .append(true)
             .create(true)
+            .write(true)
+            .truncate(true)
             .open(&out_path)
             .expect("unable to open/create data file");
         if let Ok(mut source_file) = fs::File::open(&path) {
