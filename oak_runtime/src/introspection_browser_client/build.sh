@@ -15,4 +15,4 @@ protoc \
     ../../../proto/introspection_events.proto
 
 # Build JavaScript bundle
-npx webpack
+npx webpack --env.NODE_ENV=production
