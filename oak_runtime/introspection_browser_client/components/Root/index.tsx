@@ -17,7 +17,9 @@
 import React from 'react';
 import ApplicationStateOverview from '~/components/ApplicationStateOverview';
 import EventList from '~/components/EventList';
-import introspectionEventsProto from '~/proto/introspection_events_pb';
+import introspectionEventsProto, {
+  DirectionMap,
+} from '~/proto/introspection_events_pb';
 
 // Requests the list of introspection events provided by the Oak runtime's
 // auxiliary introspection server.
@@ -55,8 +57,8 @@ interface NodeInfo {
 
 type ChannelID = number;
 enum ChannelHalfDirection {
-  Read,
-  Write,
+  Read = 'READ',
+  Write = 'WRITE',
 }
 interface ChannelHalf {
   channelId: ChannelID;
@@ -71,6 +73,22 @@ interface Channel {
   messages: Message[];
 }
 type Channels = Map<ChannelID, Channel>;
+
+function protoDirectionToChannelHalfDirection(
+  direction: DirectionMap[keyof DirectionMap]
+): ChannelHalfDirection {
+  switch (direction) {
+    case introspectionEventsProto.Direction.READ:
+      return ChannelHalfDirection.Read;
+
+    case introspectionEventsProto.Direction.WRITE:
+      return ChannelHalfDirection.Write;
+
+    default:
+      // This should never happen
+      throw new Error(`Encountered unhandled direction value ${direction}`);
+  }
+}
 
 function eventReducer(
   applicationState: OakApplicationState,
@@ -130,11 +148,11 @@ function eventReducer(
           );
         }
 
-        node.abiHandles.set(details!.getHandle(), {
+        const direction = node.abiHandles.set(details!.getHandle(), {
           channelId: details!.getChannelId(),
-          // TODO(#913): Add a direction property in the introspection
-          // event and use the real value here.
-          direction: 0,
+          direction: protoDirectionToChannelHalfDirection(
+            details!.getDirection()
+          ),
         });
       }
 
