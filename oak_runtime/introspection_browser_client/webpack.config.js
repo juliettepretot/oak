@@ -26,7 +26,7 @@ const writeFileAsync = promisify(fs.writeFile);
 const rimrafAsync = promisify(rimraf);
 
 const OUTPUT_DIR = './dist';
-const TEMP_OUTPUT_DIR = './dist-tmp';
+const TEMP_OUTPUT_DIR = './cache/dist-tmp';
 
 // Webpack plugin that copies generated assets to a seperate destinationDir.
 // If an identical file exists in the destinationDir, it is not overwritten.
@@ -70,7 +70,7 @@ class CopyIfNonExistent {
 
         const outputPath = `${this.options.destinationDir}/${fileName}`;
 
-        if (!fs.existsSync(outputPath)) {
+        if (!fs.existsSync(outputPath, { recursive: true })) {
           return writeFileAsync(outputPath, fileContent);
         }
 
@@ -125,7 +125,15 @@ module.exports = (env) => ({
     rules: [
       {
         test: /\.tsx?$/,
-        use: ['cache-loader', 'ts-loader'],
+        use: [
+          {
+            loader: 'cache-loader',
+            options: {
+              cacheDirectory: './cache/cache-loader',
+            },
+          },
+          'ts-loader',
+        ],
         exclude: /node_modules/,
       },
     ],
