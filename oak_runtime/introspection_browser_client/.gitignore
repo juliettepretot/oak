@@ -4,3 +4,5 @@
 # Programmatically generated code from protobufs
 /protoc_out
 /protoc_tmp_out
+# Tracking the version of installed NPM packages
+last-install-package-lock.json

@@ -23,7 +23,7 @@ function copy_directory_nondestructively() {
 
 # Install npm modules if needed
 readonly CURRENT_PACKAGE_LOCK="./package-lock.json"
-readonly LAST_INSTALLED_PACKAGE_LOCK="./node_modules/.cache/last-install-package-lock.json"
+readonly LAST_INSTALLED_PACKAGE_LOCK="./last-install-package-lock.json"
 if ! cmp --silent "$CURRENT_PACKAGE_LOCK" "$LAST_INSTALLED_PACKAGE_LOCK"; then
   npm ci
 fi
@@ -54,19 +54,27 @@ copy_directory_nondestructively "${PROTO_TMP_OUT_DIR}" "${PROTO_OUT_DIR}"
 rm -rf "${PROTO_TMP_OUT_DIR}"
 
 # Build JavaScript bundle
-readonly WEBPACK_TMP_OUT_DIR="./dist_tmp"
-readonly WEBPACK_OUT_DIR="./dist"
 
-mkdir -p "${WEBPACK_TMP_OUT_DIR}"
+# Iterate of the source files, and store the most recently modified one in the
+# MOST_RECENTLY_CHANGED_SOURCE_FILE variable.
+for file in $(find . -type d \( -path "./node_modules" -o -path "./dist" \) -prune -o -type f); do
+  if [[ -z "$MOST_RECENTLY_CHANGED_SOURCE_FILE" || "$file" -nt "$MOST_RECENTLY_CHANGED_SOURCE_FILE" ]]; then
+    MOST_RECENTLY_CHANGED_SOURCE_FILE="$file"
+  fi
+done
+
+readonly WEBPACK_OUT_DIR="./dist"
 mkdir -p "${WEBPACK_OUT_DIR}"
 
-npx webpack --env.NODE_ENV="production" --env.OUTPUT_PATH="${WEBPACK_TMP_OUT_DIR}"
+# Iterate of the output files, and store the least recently modified one in the
+# LEAST_RECENTLY_CHANGED_OUTPUT_FILE variable.
+for file in $(find "${WEBPACK_OUT_DIR}" -type f); do
+  if [[ -z "$LEAST_RECENTLY_CHANGED_OUTPUT_FILE" || "$file" -ot "$LEAST_RECENTLY_CHANGED_OUTPUT_FILE" ]]; then
+    LEAST_RECENTLY_CHANGED_OUTPUT_FILE="$file"
+  fi
+done
 
-# Copy each generated file into the actual output directory, but do not
-# overwrite identical files. Preserves the last modified date of unchanged
-# outputs, thereby preventing cargo from rebuilding crates that include them.
-# Ref: https://github.com/project-oak/oak/issues/1456
-copy_directory_nondestructively "${WEBPACK_TMP_OUT_DIR}" "${WEBPACK_OUT_DIR}"
-
-# Finally delete the temporary output directory.
-rm -rf "${WEBPACK_TMP_OUT_DIR}"
+# Run webpack only if needed
+if [[ "$MOST_RECENTLY_CHANGED_SOURCE_FILE" -nt "$LEAST_RECENTLY_CHANGED_OUTPUT_FILE" ]]; then
+  npx webpack --env.NODE_ENV="production" --env.OUTPUT_PATH="${WEBPACK_OUT_DIR}"
+fi
