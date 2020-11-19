@@ -181,8 +181,10 @@ impl std::fmt::Debug for NodeStopper {
 }
 
 struct NodeInfo {
-    /// A non-unique name to identify for debugging. Combined with the node_id
-    /// it forms the unique debug_id.
+    /// The name for the node.
+    ///
+    /// The name does not have to be unique and can be empty. In logs it is
+    /// combined with the id to form a unique debug_ig to identify nodes.
     name: String,
 
     /// Name for the type of this Node, for metrics output.
