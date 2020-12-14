@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+
+    <title>Treehouse</title>
+    <link rel="icon" type="image/png" href="./favicon.png" />
+    <link rel="preload" href="./index.js" />
+    <link rel="preload" href="https://apis.google.com/js/api.js" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css?family=Product+Sans:500,700&family=Roboto:400,500,700,400italic|Material+Icons"
+    />
+    <link rel="stylesheet" href="./vue-material.min.css" />
+    <link rel="stylesheet" href="./vue-material-theme.default-dark.css" />
+    <link rel="stylesheet" href="./vue-material-theme.default-dark.css" />
+    <style>
+      :root {
+        --md-theme-default-background-variant: hsl(0deg 3% 14%);
+        --md-theme-default-background: hsl(0deg 3% 21%);
+      }
+
+      html {
+        transition: initial;
+      }
+
+      section {
+        margin-bottom: 50px;
+      }
+
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      .md-title {
+        font-family: 'Product Sans', 'Roboto';
+      }
+
+      #app {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      .app-title {
+        margin: 20px 0;
+        color: #ffffff !important;
+      }
+
+      .app-title img {
+        display: inline-block;
+        height: 1.7em;
+        margin-right: 12px;
+      }
+
+      .load-module-wrapper {
+        display: flex;
+        align-items: stretch;
+        margin-bottom: 15px;
+      }
+
+      .load-module-url {
+        margin: 0;
+      }
+
+      .load-module-submit {
+        flex-shrink: 0;
+        margin-top: 0;
+        margin-bottom: 0;
+        height: auto;
+        padding: 0 15px;
+        border-radius: 4px;
+        background-color: rgba(255, 255, 255, 0.05);
+      }
+
+      .card-list {
+        list-style-type: none;
+        padding: 0;
+      }
+
+      .card-list-item {
+        margin-bottom: 15px;
+      }
+
+      .md-title {
+        font-size: 22px;
+        font-weight: 500 !important;
+      }
+
+      .md-card {
+        border-radius: 4px;
+        box-shadow: 0px 4px 2px -2px rgba(0, 0, 0, 0.3),
+          0px 2px 2px 0px rgba(0, 0, 0, 0.15),
+          0px 2px 4px 0px rgba(0, 0, 0, 0.12);
+      }
+
+      .md-card-content {
+        /* Preserve newlines */
+        white-space: pre-line;
+      }
+
+      .debug-wrapper {
+        border-radius: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background-color: var(--md-theme-default-background-variant);
+        padding: 16px;
+      }
+
+      .debug-wrapper ul {
+        overflow-x: scroll;
+        background-color: var(--md-theme-default-background);
+        border-radius: 4px;
+        padding: 10px 10px 10px 40px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="app">Please authorize the treehouse application.</div>
+    <script type="text/x-template" id="app-template">
+      <div id="app">
+        <section>
+          <h1 class="md-display-3 app-title"><img src="./icon.png" alt=""/>Treehouse</h1>
+          <div class="load-module-wrapper">
+            <md-field class="load-module-url">
+              <label>Application Module URL (WebAssembly)</label>
+              <md-input v-model="url" type="url" name="url" id="url" size="70" />
+            </md-field>
+            <md-button onClick="window.location.reload();" class="load-module-submit" :md-ripple="false" type="submit">Load Module</md-button>
+          </div>
+          <md-button class="md-raised" :disabled='isSignedIn' v-on:click="handleAuthClick">Authorize</md-button>
+          <md-button class="md-raised" :disabled='!isSignedIn' v-on:click="handleSignoutClick">Sign Out</md-button>
+        </section>
+        <div v-if="isSignedIn">
+          <section>
+            <h2>Cards</h2>
+            <md-progress-bar v-if="!cards.length" md-mode="indeterminate"></md-progress-bar>
+            <ul class="card-list" v-if="cards.length">
+              <li class="card-list-item" v-for="card in cards">
+                <md-card>
+                  <md-card-header>
+                    <div class="md-title">{{ card.title }}</div>
+                  </md-card-header>
+                  <md-card-content class="md-card-content"> {{ card.subtitle }} </md-card-content>
+                  <md-card-media md-ratio="16:9" v-if="card.photoUrl !== ''">
+                    <img v-bind:src="card.photoUrl" alt="" />
+                  </md-card-media>
+                  <md-card-content class="md-card-content"> {{ card.description }} </md-card-content>
+                </md-card>
+              </li>
+            </ul>
+          </section>
+          <section>
+            <h2>HTTP Requests</h2>
+            <div>
+              <h3>Allowed requests</h3>
+              <ul>
+                <li v-for="url in allowedUrls">{{ url }}</li>
+              </ul>
+            </div>
+            <div>
+              <h3>Denied requests</h3>
+              <ul>
+                <li v-for="url in deniedUrls">{{ url }}</li>
+              </ul>
+            </div>
+          </section>
+        </div>
+        <section>
+          <h2>Debug Interface</h2>
+          <div class='debug-wrapper'>
+            <md-switch v-model="debug">{{ debug ? "Hide" : "Show" }}</md-switch>
+            <div v-if="debug">
+              <p>In order to load an Oak Module, press the button below.</p>
+              <p>
+                This should be a single Wasm file (i.e. not a complete Oak
+                Application).
+              </p>
+              <p>
+                If compiled from Rust, it will usually be under the
+                <code>target/wasm32-unknown-unknown</code> folder or similar
+                (preferably a debug build, in order to enable sourcemap support)
+              </p>
+              <p>
+                Once loaded, open the Chrome dev tools, navigate to the Sources tab,
+                and find the source (Rust) file to debug; set a breakpoint where
+                desired (e.g. near an entrypoint definition) and then press on the
+                Invoke button for the relevant entrypoint (a module may have more than
+                one entrypoint available)
+              </p>
+              <form v-on:submit.prevent="readFile()">
+                <div>
+                  <label for="url">
+                    Enter the URL of the Oak Module (compiled as a Wasm file)
+                  </label>
+                </div>
+              </form>
+              <div v-if="module">
+                <p>Module loaded.</p>
+                <p>Imports:</p>
+                <ul>
+                  <li v-for="i in imports">
+                    <code>{{ i.module }}.{{ i.name }}</code> [{{ i.kind }}]
+                  </li>
+                </ul>
+                <p>Exports:</p>
+                <ul>
+                  <li v-for="e in exports">
+                    <code>{{ e.name }}</code> [{{ e.kind }}]
+                    <button
+                      type="button"
+                      v-if='e.kind == "function"'
+                      v-on:click="invoke(e.name)"
+                    >
+                      invoke
+                    </button>
+                  </li>
+                </ul>
+                <p>Channels:</p>
+                <ul>
+                  <li v-for="(c, handle) in channels">
+                    <code>[{{handle}}] {{ c }}</code>
+                  </li>
+                </ul>
+                <p>Oak ABI call trace:</p>
+                <button type="button" v-on:click="reset()">reset</button>
+                <ul class="debug-call-tree">
+                  <li v-for="e in trace">
+                    <pre>{{ e }}</pre>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </script>
+    <script defer src="https://apis.google.com/js/api.js"></script>
+    <script defer src="./index.js"></script>
+  </body>
+</html>
