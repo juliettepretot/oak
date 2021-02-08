@@ -44,13 +44,6 @@ async function main() {
   async function getMetadata() {
     const metadata = new grpc.Metadata();
 
-    // TODO(#1097): move this into an SDK package to allow re-use.
-    const oakLabelType = protos.lookupType('oak.label.Label');
-    // TODO(#1066): Use a more restrictive Label.
-    const publicUntrustedLabel = oakLabelType.create({});
-    const encodedLabel = oakLabelType.encode(publicUntrustedLabel).finish();
-    metadata.set(OAK_LABEL_GRPC_METADATA_KEY, encodedLabel);
-
     const oakSignedChallengeType = protos.lookupType(
       'oak.identity.SignedChallenge'
     );
@@ -69,6 +62,19 @@ async function main() {
       OAK_SIGNED_CHALLENGE_GRPC_METADATA_KEY,
       encodedSignedChallenge
     );
+
+    const oakLabelType = protos.lookupType('oak.label.Label');
+    const publicKeyIdentityTag = protos.lookupType('oak.label.Tag').create({
+      publicKeyIdentityTag: protos
+        .lookupType('oak.label.PublicKeyIdentityTag')
+        .create({ bytes: keyPair.publicKey }),
+    });
+    const publicUntrustedLabel = oakLabelType.create({
+      confidentialityTag: [],
+      integrityTags: [publicKeyIdentityTag],
+    });
+    const encodedLabel = oakLabelType.encode(publicUntrustedLabel).finish();
+    metadata.set(OAK_LABEL_GRPC_METADATA_KEY, encodedLabel);
 
     return metadata;
   }
